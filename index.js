@@ -44,10 +44,11 @@ const run = async () => {
       const userId = req.body.userId;
       const jobId = req.body.jobId;
       const email = req.body.email;
+      const date = req.body.date;
 
       const filter = { _id: ObjectId(jobId) };
       const updateDoc = {
-        $push: { applicants: { id: ObjectId(userId), email } },
+        $push: { applicants: { id: ObjectId(userId), email, date } },
       };
 
       const result = await jobsCollection.updateOne(filter, updateDoc);
@@ -115,10 +116,17 @@ const run = async () => {
       res.send({ status: false });
     });
 
+    app.get("/my-jobs/:id", async (req, res) => {
+      const employerId = req.params.id;
+      const cursor = jobsCollection.find({ employerId });
+      const result = await cursor.toArray();
+      res.send({ status: true, data: result });
+    });
+
     app.get("/applied-jobs/:email", async (req, res) => {
       const email = req.params.email;
       const query = { applicants: { $elemMatch: { email: email } } };
-      const cursor = jobsCollection.find(query).project({ applicants: 0 });
+      const cursor = jobsCollection.find(query); //.project({ applicants: 0 })
       const result = await cursor.toArray();
       res.send({ status: true, data: result });
     });
