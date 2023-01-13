@@ -28,7 +28,7 @@ const run = async () => {
       res.send(result);
     });
 
-    app.get("/users/:email", async (req, res) => {
+    app.get("/users-by-email/:email", async (req, res) => {
       const email = req.params.email;
 
       const result = await usersCollection.findOne({ email });
@@ -40,15 +40,25 @@ const run = async () => {
       res.send({ status: false });
     });
 
-    app.patch("/apply", async (req, res) => {
-      const userId = req.body.userId;
-      const jobId = req.body.jobId;
-      const email = req.body.email;
-      const date = req.body.date;
+    app.get("/users/:id", async (req, res) => {
+      const userId = req.params.id;
+      const result = await usersCollection.findOne({ _id: ObjectId(userId)  });
 
+      if (result?.email) {
+        return res.send({ status: true, data: result });
+      }
+
+      res.send({ status: false });
+    });
+
+    app.patch("/apply/:jobId", async (req, res) => {
+      const jobId = req.params.jobId;
       const filter = { _id: ObjectId(jobId) };
       const updateDoc = {
-        $push: { applicants: { id: ObjectId(userId), email, date } },
+        $push: { applicants: { 
+            ...req.body
+          } 
+        },
       };
 
       const result = await jobsCollection.updateOne(filter, updateDoc);
@@ -140,6 +150,12 @@ const run = async () => {
     app.get("/jobs/:id", async (req, res) => {
       const id = req.params.id;
       const result = await jobsCollection.findOne({ _id: ObjectId(id) });
+      res.send({ status: true, data: result });
+    });
+
+    app.delete("/jobs/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await jobsCollection.deleteOne({ _id: ObjectId(id) });
       res.send({ status: true, data: result });
     });
 
