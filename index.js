@@ -22,6 +22,7 @@ const run = async () => {
     const usersCollection = db.collection("users");
     const jobsCollection = db.collection("jobs");
     const conversationsCollection = db.collection("conversations");
+    const messagesCollection = db.collection("messages");
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -43,13 +44,12 @@ const run = async () => {
 
     app.get("/users/:id", async (req, res) => {
       const userId = req.params.id;
-      const result = await usersCollection.findOne({ _id: ObjectId(userId) });
-
-      if (result?.email) {
-        return res.send({ status: true, data: result });
+      try {
+        const user = await usersCollection.findOne({ _id: ObjectId(userId) });
+        res.status(200).json(user);
+      } catch (err) {
+        res.status(500).json(err);
       }
-
-      res.send({ status: false });
     });
 
     app.patch("/apply/:jobId", async (req, res) => {
@@ -180,6 +180,20 @@ const run = async () => {
       }
     });
 
+    //Get conversations by userId
+    app.get("/conversations/:userId/", async (req, res) => {
+      const userId = req.params.userId;
+      try {
+        const result = conversationsCollection.find({
+          members: { $in: [userId] },
+        });
+        const userConversations = await result.toArray();
+        res.status(200).json(userConversations);
+      } catch (err) {
+        res.status(500).json(err);
+      }
+    });
+
     //Get conversation includes two userId
     app.get("/conversations/find/:senderId/:receiverId", async (req, res) => {
       const senderId = req.params.senderId;
@@ -189,6 +203,34 @@ const run = async () => {
           members: { $all: [senderId, receiverId] },
         });
         res.status(200).json(result);
+      } catch (err) {
+        res.status(500).json(err);
+      }
+    });
+
+    //Creating new message based on conversationId
+    app.post("/messages", async (req, res) => {
+      const message = {
+        ...req.body,
+        createdAt: Date.now(),
+      };
+      try {
+        const result = await messagesCollection.insertOne(message);
+        res.status(200).json(result);
+      } catch (err) {
+        res.status(500).json(err);
+      }
+    });
+
+    //Get messages by conversationId
+    app.get("/messages/:conversationId/", async (req, res) => {
+      const conversationId = req.params.conversationId;
+      try {
+        const result = messagesCollection.find({
+          conversationId,
+        });
+        const messages = await result.toArray();
+        res.send(messages);
       } catch (err) {
         res.status(500).json(err);
       }
