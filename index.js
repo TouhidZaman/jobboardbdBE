@@ -21,6 +21,7 @@ const run = async () => {
     const db = client.db("jobboardbdDB");
     const usersCollection = db.collection("users");
     const jobsCollection = db.collection("jobs");
+    const conversationsCollection = db.collection("conversations");
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -42,7 +43,7 @@ const run = async () => {
 
     app.get("/users/:id", async (req, res) => {
       const userId = req.params.id;
-      const result = await usersCollection.findOne({ _id: ObjectId(userId)  });
+      const result = await usersCollection.findOne({ _id: ObjectId(userId) });
 
       if (result?.email) {
         return res.send({ status: true, data: result });
@@ -55,9 +56,10 @@ const run = async () => {
       const jobId = req.params.jobId;
       const filter = { _id: ObjectId(jobId) };
       const updateDoc = {
-        $push: { applicants: { 
-            ...req.body
-          } 
+        $push: {
+          applicants: {
+            ...req.body,
+          },
         },
       };
 
@@ -114,11 +116,7 @@ const run = async () => {
         arrayFilters: [{ "user.id": ObjectId(userId) }],
       };
 
-      const result = await jobsCollection.updateOne(
-        filter,
-        updateDoc,
-        arrayFilter
-      );
+      const result = await jobsCollection.updateOne(filter, updateDoc, arrayFilter);
       if (result.acknowledged) {
         return res.send({ status: true, data: result });
       }
@@ -164,6 +162,37 @@ const run = async () => {
       const result = await jobsCollection.insertOne(job);
       res.send({ status: true, data: result });
     });
+
+    /*#####################
+    ###### Chat APIs ######
+    #######################*/
+
+    //Creating new conversation between tow users
+    app.post("/conversations", async (req, res) => {
+      const conversation = {
+        members: [req.body.senderId, req.body.receiverId],
+      };
+      try {
+        const result = await conversationsCollection.insertOne(conversation);
+        res.status(200).json(result);
+      } catch (err) {
+        res.status(500).json(err);
+      }
+    });
+
+    //Get conversation includes two userId
+    app.get("/conversations/find/:senderId/:receiverId", async (req, res) => {
+      const senderId = req.params.senderId;
+      const receiverId = req.params.receiverId;
+      try {
+        const result = await conversationsCollection.findOne({
+          members: { $all: [senderId, receiverId] },
+        });
+        res.status(200).json(result);
+      } catch (err) {
+        res.status(500).json(err);
+      }
+    });
   } finally {
   }
 };
@@ -176,14 +205,15 @@ app.get("/", (req, res) => {
     data: {
       message: "Welcome to job board bd server",
       author: {
-        "name": "Muhammad Touhiduzzaman",
-        "email": "touhid4bd@gmail.com",
-        "url": "https://github.com/TouhidZaman"
-      }
-    }
+        name: "Muhammad Touhiduzzaman",
+        email: "touhid4bd@gmail.com",
+        url: "https://github.com/TouhidZaman",
+      },
+    },
   });
 });
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
